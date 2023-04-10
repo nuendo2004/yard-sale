@@ -1,0 +1,14 @@
+apiVersion: skaffold/v4beta3
+kind: Config
+metadata:
+  name: yard-sale
+build:
+  artifacts:
+    - image: nuendo2004/yard-sale_auth
+      context: auth-server
+      docker:
+        dockerfile: Dockerfile
+manifests:
+  rawYaml:
+    - infra/k8s/auth-depl.yaml
+    - infra/k8s/ingress-srv.yaml
