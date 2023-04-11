@@ -1,3 +1,1 @@
-type ErrorResponse = {
-  message: string;
-};
+import { ZodError } from "zod";

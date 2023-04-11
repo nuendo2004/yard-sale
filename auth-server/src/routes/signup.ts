@@ -1,5 +1,6 @@
 import express from "express";
 import { z } from "zod";
+import { ZodRequestError } from "../Errors/RequestValidationError";
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const UserSchema = z.object({
     .string()
     .min(5, "Email must be more than 5 characters")
     .max(128)
-    .email(""),
+    .email("Invalid email format"),
   password: z
     .string()
     .min(8, { message: "Password should be at least 8 characters long" })
@@ -25,8 +26,10 @@ const UserSchema = z.object({
 type User = z.infer<typeof UserSchema>;
 
 router.post("/signup", (req, res) => {
-  const { email, password } = req.body;
-  res.send(UserSchema.safeParse(req.body));
+  const response = UserSchema.safeParse(req.body);
+  if (!response.success) throw new ZodRequestError(response.error);
+  // if (!response.success) res.send(response.error);
+  else res.status(200).json(response);
 });
 
 export { router as signUpRouter };
