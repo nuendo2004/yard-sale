@@ -1,6 +1,8 @@
 import express from "express";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 import { ZodRequestError } from "../Errors/RequestValidationError";
+import User from "../models/user";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -21,15 +23,51 @@ const UserSchema = z.object({
     .regex(/[^a-zA-Z0-9]/, {
       message: "Password should contain at least one special character",
     }),
+  avatarUrl: z.string().optional(),
+  firstName: z.string(),
+  lastName: z.string().optional(),
 });
 
 type User = z.infer<typeof UserSchema>;
 
-router.post("/signup", (req, res) => {
+router.post("/signup", async (req, res, next) => {
+  console.log(req.body);
   const response = UserSchema.safeParse(req.body);
-  if (!response.success) throw new ZodRequestError(response.error);
-  // if (!response.success) res.send(response.error);
-  else res.status(200).json(response);
+  console.log(response);
+  if (!response.success) next(new ZodRequestError(response.error));
+  else {
+    const { email, password, avatarUrl, firstName, lastName } = req.body;
+    const existed = await User.findOne({ email });
+    if (existed) {
+      next(new Error("Account with the same email already exist"));
+      return;
+    }
+
+    const user = User.build({
+      email,
+      password,
+      avatarUrl,
+      firstName,
+      lastName,
+    });
+    await user.save();
+
+    const userJwt = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        firstName: user.firstName,
+      },
+      process.env.JWT_KEY!
+    );
+
+    req.session = {
+      jwt: userJwt,
+    };
+
+    res.status(201).json(user);
+  }
 });
 
 export { router as signUpRouter };
